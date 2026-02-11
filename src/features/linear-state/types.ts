@@ -1,3 +1,5 @@
+import type { PlanProgress } from "../boulder-state/types"
+
 export interface LinearIssue {
 	id: string
 	identifier: string
@@ -41,10 +43,6 @@ export interface TrackingStateProvider {
 	isComplete(planRef: string): Promise<boolean>
 }
 
-export interface PlanProgress {
-	total: number
-	completed: number
-	isComplete: boolean
-}
+export type { PlanProgress }
 
 export type ResolvedProvider = "markdown" | "linear"

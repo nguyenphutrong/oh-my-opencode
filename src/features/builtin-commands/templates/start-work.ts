@@ -26,14 +26,14 @@ export const START_WORK_TEMPLATE = `You are starting a Sisyphus work session.
      - If MULTIPLE plans: show list with timestamps, ask user to select
 
 4. **Create/Update boulder.json**:
-   \\\`\\\`\\\`json
+   \`\`\`json
    {
      "active_plan": "/absolute/path/to/plan.md",
      "started_at": "ISO_TIMESTAMP",
      "session_ids": ["session_id_1", "session_id_2"],
      "plan_name": "plan-name"
    }
-   \\\`\\\`\\\`
+   \`\`\`
 
 5. **Read the plan file** and start executing tasks according to atlas workflow
 
@@ -67,7 +67,7 @@ export const START_WORK_TEMPLATE = `You are starting a Sisyphus work session.
 ## OUTPUT FORMAT
 
 When listing plans for selection:
-\\\`\\\`\\\`
+\`\`\`
 Available Work Plans
 
 Current Time: {ISO timestamp}
@@ -78,10 +78,10 @@ Provider: {markdown | linear}
 2. [plan-name-2] - Progress: 0/5 tasks
 
 Which plan would you like to work on? (Enter number or plan name)
-\\\`\\\`\\\`
+\`\`\`
 
 When resuming existing work:
-\\\`\\\`\\\`
+\`\`\`
 Resuming Work Session
 
 Active Plan: {plan-name}
@@ -90,7 +90,7 @@ Progress: {completed}/{total} tasks
 Sessions: {count} (appending current session)
 
 Reading plan and continuing from last incomplete task...
-\\\`\\\`\\\`
+\`\`\`
 
 ## CRITICAL
 
@@ -99,4 +99,3 @@ Reading plan and continuing from last incomplete task...
 - Read the FULL plan before delegating any tasks
 - Follow atlas delegation protocols (7-section format)
 - When using Linear mode, always update the shadow cache alongside Linear API calls`
-

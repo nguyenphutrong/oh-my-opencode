@@ -13,6 +13,20 @@ export interface LinearShadowCache {
 	last_updated: string
 }
 
+export function createEmptyShadowCache(): LinearShadowCache {
+	return {
+		active_issue_id: null,
+		team_id: "",
+		issues: {},
+		workflow_states: {
+			done_state_id: null,
+			started_state_id: null,
+		},
+		open_issue_ids: [],
+		last_updated: new Date().toISOString(),
+	}
+}
+
 export const EMPTY_SHADOW_CACHE: LinearShadowCache = {
 	active_issue_id: null,
 	team_id: "",
@@ -22,5 +36,5 @@ export const EMPTY_SHADOW_CACHE: LinearShadowCache = {
 		started_state_id: null,
 	},
 	open_issue_ids: [],
-	last_updated: new Date().toISOString(),
+	last_updated: "",
 }

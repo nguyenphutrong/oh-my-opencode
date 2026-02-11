@@ -1,7 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { log } from "../../shared/logger"
-import type { RalphLoopOptions, RalphLoopState } from "./types"
-import type { TrackingStateProvider } from "../../features/linear-state/types"
+import type { RalphLoopEventHandlerOptions } from "./types"
 import { HOOK_NAME } from "./constants"
 import {
 	detectCompletionInSessionMessages,
@@ -9,16 +8,10 @@ import {
 } from "./completion-promise-detector"
 import { buildContinuationPrompt } from "./continuation-prompt-builder"
 import { injectContinuationPrompt } from "./continuation-prompt-injector"
-import { readBoulderState, writeBoulderState } from "../../features/boulder-state"
-import { setActiveIssue } from "../../features/linear-state/shadow-cache"
-
-type SessionRecovery = {
-	isRecovering: (sessionID: string) => boolean
-	markRecovering: (sessionID: string) => void
-	clear: (sessionID: string) => void
-}
-type LoopStateController = { getState: () => RalphLoopState | null; clear: () => boolean; incrementIteration: () => RalphLoopState | null }
-type RalphLoopEventHandlerOptions = { directory: string; apiTimeoutMs: number; getTranscriptPath: (sessionID: string) => string | undefined; checkSessionExists?: RalphLoopOptions["checkSessionExists"]; sessionRecovery: SessionRecovery; loopState: LoopStateController; trackingProvider?: TrackingStateProvider & { findNextOpenIssueId?: () => string | null } }
+import {
+	transitionToNextIssue,
+	buildNextIssueContinuationPrompt,
+} from "./next-issue-transition"
 
 export function createRalphLoopEventHandler(
 	ctx: PluginInput,
@@ -214,32 +207,3 @@ export function createRalphLoopEventHandler(
 		}
 	}
 }
-
-function transitionToNextIssue(directory: string, nextIssueId: string): void {
-	const boulder = readBoulderState(directory)
-	if (!boulder) return
-	boulder.linear_issue_id = nextIssueId
-	boulder.active_plan = nextIssueId
-	boulder.plan_name = nextIssueId
-	writeBoulderState(directory, boulder)
-	setActiveIssue(directory, nextIssueId)
-}
-
-function buildNextIssueContinuationPrompt(
-	nextIssueId: string,
-	state: RalphLoopState,
-): string {
-	const prefix = state.ultrawork ? "ultrawork " : ""
-	return `${prefix}[SYSTEM DIRECTIVE - RALPH LOOP ${state.iteration}/${state.max_iterations}]
-
-Current issue completed. Moving to next Linear issue: ${nextIssueId}
-
-INSTRUCTIONS:
-1. Use Linear MCP \`get_issue\` to fetch the full details of issue ${nextIssueId}
-2. Update the issue status to "In Progress" via \`update_issue\`
-3. Read sub-issues and execute them one by one
-4. Mark each sub-issue as "Done" via \`update_issue\` when completed
-5. When ALL sub-issues are done, the loop will automatically pick the next open issue
-6. When FULLY complete and no more issues remain, output: <promise>${state.completion_promise}</promise>`
-}
-

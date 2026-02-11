@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { LinearShadowCache } from "./shadow-cache-types"
 import type { LinearIssue } from "./types"
-import { EMPTY_SHADOW_CACHE } from "./shadow-cache-types"
+import { createEmptyShadowCache } from "./shadow-cache-types"
 import { isIssueCompleted } from "./linear-response-parser"
 
 const CACHE_DIR = ".sisyphus"
@@ -43,10 +43,7 @@ export function upsertIssueInCache(
 	directory: string,
 	issue: LinearIssue,
 ): void {
-	const cache = readShadowCache(directory) ?? {
-		...EMPTY_SHADOW_CACHE,
-		last_updated: new Date().toISOString(),
-	}
+	const cache = readShadowCache(directory) ?? createEmptyShadowCache()
 	cache.issues[issue.identifier] = issue
 	writeShadowCache(directory, cache)
 }
@@ -55,10 +52,7 @@ export function setActiveIssue(
 	directory: string,
 	issueIdentifier: string,
 ): void {
-	const cache = readShadowCache(directory) ?? {
-		...EMPTY_SHADOW_CACHE,
-		last_updated: new Date().toISOString(),
-	}
+	const cache = readShadowCache(directory) ?? createEmptyShadowCache()
 	cache.active_issue_id = issueIdentifier
 	writeShadowCache(directory, cache)
 }
@@ -67,10 +61,7 @@ export function updateOpenIssueIds(
 	directory: string,
 	issues: LinearIssue[],
 ): void {
-	const cache = readShadowCache(directory) ?? {
-		...EMPTY_SHADOW_CACHE,
-		last_updated: new Date().toISOString(),
-	}
+	const cache = readShadowCache(directory) ?? createEmptyShadowCache()
 	cache.open_issue_ids = issues
 		.filter((i) => !isIssueCompleted(i))
 		.map((i) => i.identifier)
@@ -84,10 +75,7 @@ export function setWorkflowStates(
 	directory: string,
 	states: { done_state_id: string | null; started_state_id: string | null },
 ): void {
-	const cache = readShadowCache(directory) ?? {
-		...EMPTY_SHADOW_CACHE,
-		last_updated: new Date().toISOString(),
-	}
+	const cache = readShadowCache(directory) ?? createEmptyShadowCache()
 	cache.workflow_states = states
 	writeShadowCache(directory, cache)
 }

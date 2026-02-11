@@ -124,6 +124,8 @@ function autoSelectCandidate(
 			"atlas",
 			{ tracking_provider: "linear", linear_issue_id: candidate.id },
 		)
+		// Override plan_name: createBoulderState derives it from file path,
+		// but for Linear issues the ID is not a path - use the issue title instead.
 		newState.plan_name = candidate.name
 		writeBoulderState(directory, newState)
 		setActiveIssue(directory, candidate.id)

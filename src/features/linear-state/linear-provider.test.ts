@@ -9,16 +9,18 @@ describe("createLinearStateProvider", () => {
 	}
 
 	function createMockClient() {
+		const callTool = mock((name: string, args: Record<string, unknown>) => {
+			return Promise.resolve({})
+		})
 		return {
-			callTool: mock((name: string, args: Record<string, unknown>) => {
-				return Promise.resolve({})
-			}),
-		} as unknown as LinearMcpClient
+			callTool,
+			asClient: () => ({ callTool }) as unknown as LinearMcpClient,
+		}
 	}
 
 	test("getProgress returns correct counts from sub-issues", async () => {
 		//#given
-		const client = createMockClient()
+		const mockClient = createMockClient()
 		const issue: LinearIssue = {
 			id: "parent-id",
 			identifier: "PAR-1",
@@ -49,7 +51,7 @@ describe("createLinearStateProvider", () => {
 			extractIssue: () => issue,
 			isIssueCompleted: (i: LinearIssue) => i.state.type === "completed",
 		}))
-		const provider = createLinearStateProvider(client, config)
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		const progress = await provider.getProgress("parent-id")
@@ -62,9 +64,9 @@ describe("createLinearStateProvider", () => {
 
 	test("getProgress returns safe progress on API failure", async () => {
 		//#given
-		const client = createMockClient()
-		;(client.callTool as any).mockImplementation(() => Promise.reject(new Error("API Error")))
-		const provider = createLinearStateProvider(client, config)
+		const mockClient = createMockClient()
+		mockClient.callTool.mockImplementation(() => Promise.reject(new Error("API Error")))
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		const progress = await provider.getProgress("parent-id")
@@ -77,7 +79,7 @@ describe("createLinearStateProvider", () => {
 
 	test("isComplete returns true when parent issue is completed", async () => {
 		//#given
-		const client = createMockClient()
+		const mockClient = createMockClient()
 		const issue: LinearIssue = {
 			id: "parent-id",
 			identifier: "PAR-1",
@@ -91,7 +93,7 @@ describe("createLinearStateProvider", () => {
 			extractIssue: () => issue,
 			isIssueCompleted: (i: LinearIssue) => i.state.type === "completed",
 		}))
-		const provider = createLinearStateProvider(client, config)
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		const complete = await provider.isComplete("parent-id")
@@ -102,7 +104,7 @@ describe("createLinearStateProvider", () => {
 
 	test("isComplete returns true when all sub-issues are completed", async () => {
 		//#given
-		const client = createMockClient()
+		const mockClient = createMockClient()
 		const issue: LinearIssue = {
 			id: "parent-id",
 			identifier: "PAR-1",
@@ -125,7 +127,7 @@ describe("createLinearStateProvider", () => {
 			extractIssue: () => issue,
 			isIssueCompleted: (i: LinearIssue) => i.state.type === "completed",
 		}))
-		const provider = createLinearStateProvider(client, config)
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		const complete = await provider.isComplete("parent-id")
@@ -136,7 +138,7 @@ describe("createLinearStateProvider", () => {
 
 	test("isComplete returns false when some sub-issues are incomplete", async () => {
 		//#given
-		const client = createMockClient()
+		const mockClient = createMockClient()
 		const issue: LinearIssue = {
 			id: "parent-id",
 			identifier: "PAR-1",
@@ -159,7 +161,7 @@ describe("createLinearStateProvider", () => {
 			extractIssue: () => issue,
 			isIssueCompleted: (i: LinearIssue) => i.state.type === "completed",
 		}))
-		const provider = createLinearStateProvider(client, config)
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		const complete = await provider.isComplete("parent-id")
@@ -170,8 +172,8 @@ describe("createLinearStateProvider", () => {
 
 	test("markTaskComplete calls update_issue with correct stateId", async () => {
 		//#given
-		const client = createMockClient()
-		;(client.callTool as any).mockImplementation((name: string) => {
+		const mockClient = createMockClient()
+		mockClient.callTool.mockImplementation((name: string) => {
 			if (name === "get_workflow_states") {
 				return Promise.resolve({ data: { workflowStates: { nodes: [{ id: "done-id", type: "completed" }] } } })
 			}
@@ -180,13 +182,13 @@ describe("createLinearStateProvider", () => {
 		mock.module("./linear-response-parser", () => ({
 			extractDoneStateId: () => "done-id",
 		}))
-		const provider = createLinearStateProvider(client, config)
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		await provider.markTaskComplete("parent-id", "task-id")
 
 		//#then
-		expect(client.callTool).toHaveBeenCalledWith("update_issue", {
+		expect(mockClient.callTool).toHaveBeenCalledWith("update_issue", {
 			issueId: "task-id",
 			stateId: "done-id",
 		})
@@ -194,24 +196,24 @@ describe("createLinearStateProvider", () => {
 
 	test("markTaskComplete handles missing done state gracefully", async () => {
 		//#given
-		const client = createMockClient()
-		;(client.callTool as any).mockImplementation(() => Promise.resolve({}))
+		const mockClient = createMockClient()
+		mockClient.callTool.mockImplementation(() => Promise.resolve({}))
 		mock.module("./linear-response-parser", () => ({
 			extractDoneStateId: () => null,
 		}))
-		const provider = createLinearStateProvider(client, config)
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		await provider.markTaskComplete("parent-id", "task-id")
 
 		//#then
-		expect(client.callTool).not.toHaveBeenCalledWith("update_issue", expect.any(Object))
+		expect(mockClient.callTool).not.toHaveBeenCalledWith("update_issue", expect.any(Object))
 	})
 
 	test("Lazy caching: get_workflow_states only called once across multiple operations", async () => {
 		//#given
-		const client = createMockClient()
-		;(client.callTool as any).mockImplementation((name: string) => {
+		const mockClient = createMockClient()
+		mockClient.callTool.mockImplementation((name: string) => {
 			if (name === "get_workflow_states") {
 				return Promise.resolve({ nodes: [{ id: "done-id", type: "completed" }] })
 			}
@@ -220,14 +222,14 @@ describe("createLinearStateProvider", () => {
 		mock.module("./linear-response-parser", () => ({
 			extractDoneStateId: () => "done-id",
 		}))
-		const provider = createLinearStateProvider(client, config)
+		const provider = createLinearStateProvider(mockClient.asClient(), config)
 
 		//#when
 		await provider.markTaskComplete("parent-id", "task-1")
 		await provider.markTaskComplete("parent-id", "task-2")
 
 		//#then
-		const workflowCalls = (client.callTool as any).mock.calls.filter((call: any) => call[0] === "get_workflow_states")
+		const workflowCalls = mockClient.callTool.mock.calls.filter((call) => call[0] === "get_workflow_states")
 		expect(workflowCalls.length).toBe(1)
 	})
 })
