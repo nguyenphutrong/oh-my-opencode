@@ -7,7 +7,7 @@ import type { PluginContext } from "./plugin/types"
 import { createCoreHooks } from "./plugin/hooks/create-core-hooks"
 import { createContinuationHooks } from "./plugin/hooks/create-continuation-hooks"
 import { createSkillHooks } from "./plugin/hooks/create-skill-hooks"
-import { createMarkdownStateProvider } from "./features/linear-state/markdown-provider"
+import { createAutoTrackingProvider } from "./features/linear-state/auto-tracking-provider"
 
 export type CreatedHooks = ReturnType<typeof createHooks>
 
@@ -44,7 +44,7 @@ export function createHooks(args: {
     safeHookEnabled,
     backgroundManager,
     sessionRecovery: core.sessionRecovery,
-    trackingProvider: createMarkdownStateProvider(),
+    trackingProvider: createAutoTrackingProvider(ctx.directory),
   })
 
   const skill = createSkillHooks({

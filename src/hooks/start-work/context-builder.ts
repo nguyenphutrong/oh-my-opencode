@@ -1,0 +1,157 @@
+import {
+	readBoulderState,
+	writeBoulderState,
+	appendSessionId,
+	createBoulderState,
+	clearBoulderState,
+	getPlanProgress,
+	getPlanName,
+} from "../../features/boulder-state"
+import { setActiveIssue } from "../../features/linear-state/shadow-cache"
+import {
+	discoverMarkdownPlans,
+	discoverLinearIssues,
+	findPlanByName,
+	type PlanCandidate,
+} from "./plan-discovery"
+import { findPrometheusPlans } from "../../features/boulder-state"
+
+interface BuildContextArgs {
+	directory: string
+	sessionId: string
+	timestamp: string
+	explicitPlanName: string | null
+}
+
+export function buildStartWorkContext(args: BuildContextArgs): string {
+	const { directory, sessionId, timestamp, explicitPlanName } = args
+
+	if (explicitPlanName) {
+		return handleExplicitPlan(directory, sessionId, timestamp, explicitPlanName)
+	}
+
+	const existingState = readBoulderState(directory)
+
+	if (existingState) {
+		const resumeResult = handleExistingBoulder(directory, sessionId, existingState)
+		if (resumeResult !== null) return resumeResult
+	}
+
+	return handlePlanDiscovery(directory, sessionId, timestamp)
+}
+
+function handleExplicitPlan(
+	directory: string,
+	sessionId: string,
+	timestamp: string,
+	explicitPlanName: string,
+): string {
+	const allPlans = findPrometheusPlans(directory)
+	const matchedPlan = findPlanByName(allPlans, explicitPlanName)
+
+	if (matchedPlan) {
+		const progress = getPlanProgress(matchedPlan)
+		if (progress.isComplete) {
+			return `\n## Plan Already Complete\n\nThe requested plan "${getPlanName(matchedPlan)}" has been completed.\nAll ${progress.total} tasks are done. Create a new plan with: /plan "your task"`
+		}
+		clearBoulderState(directory)
+		const newState = createBoulderState(matchedPlan, sessionId, "atlas")
+		writeBoulderState(directory, newState)
+		return formatAutoSelectedPlan(getPlanName(matchedPlan), matchedPlan, progress.completed, progress.total, sessionId, timestamp, "markdown")
+	}
+
+	const incompletePlans = allPlans.filter((p) => !getPlanProgress(p).isComplete)
+	if (incompletePlans.length > 0) {
+		const planList = incompletePlans
+			.map((p, i) => `${i + 1}. [${getPlanName(p)}] - Progress: ${getPlanProgress(p).completed}/${getPlanProgress(p).total}`)
+			.join("\n")
+		return `\n## Plan Not Found\n\nCould not find a plan matching "${explicitPlanName}".\n\nAvailable incomplete plans:\n${planList}\n\nAsk the user which plan to work on.`
+	}
+
+	return `\n## Plan Not Found\n\nCould not find a plan matching "${explicitPlanName}".\nNo incomplete plans available. Create a new plan with: /plan "your task"`
+}
+
+function handleExistingBoulder(
+	directory: string,
+	sessionId: string,
+	existingState: ReturnType<typeof readBoulderState> & {},
+): string | null {
+	if (existingState.tracking_provider === "linear" && existingState.linear_issue_id) {
+		appendSessionId(directory, sessionId)
+		return `\n## Active Linear Work Session Found\n\n**Status**: RESUMING existing work\n**Issue**: ${existingState.linear_issue_id}\n**Provider**: linear\n**Sessions**: ${existingState.session_ids.length + 1} (current session appended)\n**Started**: ${existingState.started_at}\n\nUse Linear MCP \`get_issue\` to check current progress and continue from first incomplete sub-issue.\nMark sub-issues as Done via \`update_issue\` when completed.`
+	}
+
+	const progress = getPlanProgress(existingState.active_plan)
+	if (!progress.isComplete) {
+		appendSessionId(directory, sessionId)
+		return `\n## Active Work Session Found\n\n**Status**: RESUMING existing work\n**Plan**: ${existingState.plan_name}\n**Path**: ${existingState.active_plan}\n**Progress**: ${progress.completed}/${progress.total} tasks completed\n**Sessions**: ${existingState.session_ids.length + 1} (current session appended)\n**Started**: ${existingState.started_at}\n\nThe current session (${sessionId}) has been added to session_ids.\nRead the plan file and continue from the first unchecked task.`
+	}
+
+	return null
+}
+
+function handlePlanDiscovery(
+	directory: string,
+	sessionId: string,
+	timestamp: string,
+): string {
+	const linearCandidates = discoverLinearIssues(directory)
+	const markdownCandidates = discoverMarkdownPlans(directory).filter((p) => !p.isComplete)
+	const allCandidates = [...linearCandidates, ...markdownCandidates]
+
+	if (allCandidates.length === 0) {
+		return `\n## No Plans Found\n\nNo Prometheus plan files at .sisyphus/plans/ and no open Linear issues in shadow cache.\nUse Prometheus to create a work plan: /plan "your task"\nOr search Linear for open issues: use Linear MCP \`search_issues\``
+	}
+
+	if (allCandidates.length === 1) {
+		const candidate = allCandidates[0]
+		return autoSelectCandidate(directory, candidate, sessionId, timestamp)
+	}
+
+	return formatMultipleCandidates(allCandidates, timestamp, sessionId)
+}
+
+function autoSelectCandidate(
+	directory: string,
+	candidate: PlanCandidate,
+	sessionId: string,
+	timestamp: string,
+): string {
+	if (candidate.provider === "linear") {
+		const newState = createBoulderState(
+			candidate.id,
+			sessionId,
+			"atlas",
+			{ tracking_provider: "linear", linear_issue_id: candidate.id },
+		)
+		newState.plan_name = candidate.name
+		writeBoulderState(directory, newState)
+		setActiveIssue(directory, candidate.id)
+		return formatAutoSelectedPlan(candidate.name, candidate.id, candidate.completed, candidate.total, sessionId, timestamp, "linear")
+	}
+
+	const newState = createBoulderState(candidate.id, sessionId, "atlas")
+	writeBoulderState(directory, newState)
+	return formatAutoSelectedPlan(candidate.name, candidate.id, candidate.completed, candidate.total, sessionId, timestamp, "markdown")
+}
+
+function formatAutoSelectedPlan(
+	name: string, path: string, completed: number, total: number,
+	sessionId: string, timestamp: string, provider: "markdown" | "linear",
+): string {
+	const providerLine = provider === "linear" ? `\n**Provider**: linear\n\nUse Linear MCP to get full issue details via \`get_issue\`. Update issue status to "In Progress" via \`update_issue\`. Mark sub-issues as Done when completed.` : ""
+	return `\n## Auto-Selected Plan\n\n**Plan**: ${name}\n**Path**: ${path}\n**Progress**: ${completed}/${total} tasks\n**Session ID**: ${sessionId}\n**Started**: ${timestamp}${providerLine}\n\nboulder.json has been created. Read the plan and begin execution.`
+}
+
+function formatMultipleCandidates(
+	candidates: PlanCandidate[],
+	timestamp: string,
+	sessionId: string,
+): string {
+	const list = candidates.map((c, i) => {
+		const providerTag = c.provider === "linear" ? " [Linear]" : " [Markdown]"
+		return `${i + 1}. [${c.name}]${providerTag} - Progress: ${c.completed}/${c.total}`
+	}).join("\n")
+
+	return `\n<system-reminder>\n## Multiple Plans Found\n\nCurrent Time: ${timestamp}\nSession ID: ${sessionId}\n\n${list}\n\nAsk the user which plan to work on. Present the options above and wait for their response.\n</system-reminder>`
+}

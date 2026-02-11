@@ -30,7 +30,7 @@ import {
 } from "../../shared"
 import { safeCreateHook } from "../../shared/safe-create-hook"
 import { sessionExists } from "../../tools"
-import { createMarkdownStateProvider } from "../../features/linear-state/markdown-provider"
+import { createAutoTrackingProvider } from "../../features/linear-state/auto-tracking-provider"
 
 export type SessionHooks = {
   contextWindowMonitor: ReturnType<typeof createContextWindowMonitorHook> | null
@@ -126,7 +126,7 @@ export function createSessionHooks(args: {
         createRalphLoopHook(ctx, {
           config: pluginConfig.ralph_loop,
           checkSessionExists: async (sessionId) => sessionExists(sessionId),
-          trackingProvider: createMarkdownStateProvider(),
+          trackingProvider: createAutoTrackingProvider(ctx.directory),
         }))
     : null
 

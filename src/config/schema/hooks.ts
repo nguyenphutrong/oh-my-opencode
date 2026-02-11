@@ -46,6 +46,7 @@ export const HookNameSchema = z.enum([
   "tasks-todowrite-disabler",
   "write-existing-file-guard",
   "anthropic-effort",
+  "linear-mcp-interceptor",
 ])
 
 export type HookName = z.infer<typeof HookNameSchema>
