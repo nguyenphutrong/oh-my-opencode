@@ -9,6 +9,8 @@ export {
   SisyphusAgentConfigSchema,
   ExperimentalConfigSchema,
   RalphLoopConfigSchema,
+  TrackingProviderSchema,
+  LinearTrackingConfigSchema,
   TmuxConfigSchema,
   TmuxLayoutSchema,
 } from "./schema"
@@ -25,6 +27,8 @@ export type {
   ExperimentalConfig,
   DynamicContextPruningConfig,
   RalphLoopConfig,
+  TrackingProvider,
+  LinearTrackingConfig,
   TmuxConfig,
   TmuxLayout,
   SisyphusConfig,
