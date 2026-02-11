@@ -1,5 +1,6 @@
 import type { LinearIssue } from "../../features/linear-state/types"
 import { extractIssue, extractDoneStateId } from "../../features/linear-state/linear-response-parser"
+import { matchesLinearName } from "../../features/linear-state/detection"
 import {
 	upsertIssueInCache,
 	updateOpenIssueIds,
@@ -26,10 +27,6 @@ function makeKey(sessionID: string, callID: string): string {
 	return `${sessionID}:${callID}`
 }
 
-function isLinearMcp(name: string): boolean {
-	return name.toLowerCase().includes("linear")
-}
-
 function cleanupStale(): void {
 	const now = Date.now()
 	for (const [key, entry] of pendingCalls) {
@@ -46,7 +43,7 @@ export function createLinearMcpInterceptorHook(directory: string) {
 			if (input.tool !== "skill_mcp") return
 
 			const mcpName = typeof output.args.mcp_name === "string" ? output.args.mcp_name : ""
-			if (!isLinearMcp(mcpName)) return
+			if (!matchesLinearName(mcpName)) return
 
 			const toolName = typeof output.args.tool_name === "string" ? output.args.tool_name : ""
 			if (!toolName) return

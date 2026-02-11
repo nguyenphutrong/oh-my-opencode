@@ -46,6 +46,63 @@ describe("detectLinearMcp", () => {
 		expect(result).toBe(true)
 	})
 
+	test("returns true when server URL matches mcp.linear.app (HTTP)", () => {
+		//#given
+		const registeredMcps = {}
+		const mcpJsonConfig = {
+			mcpServers: {
+				"my-project-tracker": {
+					type: "http",
+					url: "https://mcp.linear.app/mcp",
+				},
+			},
+		}
+
+		//#when
+		const result = detectLinearMcp(registeredMcps, mcpJsonConfig)
+
+		//#then
+		expect(result).toBe(true)
+	})
+
+	test("returns true when server URL matches mcp.linear.app (SSE)", () => {
+		//#given
+		const registeredMcps = {}
+		const mcpJsonConfig = {
+			mcpServers: {
+				"custom-name": {
+					type: "sse",
+					url: "https://mcp.linear.app/sse",
+				},
+			},
+		}
+
+		//#when
+		const result = detectLinearMcp(registeredMcps, mcpJsonConfig)
+
+		//#then
+		expect(result).toBe(true)
+	})
+
+	test("returns false when name contains 'linear' but is not an exact match and URL does not match", () => {
+		//#given
+		const registeredMcps = {}
+		const mcpJsonConfig = {
+			mcpServers: {
+				"non-linear-solver": {
+					type: "http",
+					url: "https://example.com/api",
+				},
+			},
+		}
+
+		//#when
+		const result = detectLinearMcp(registeredMcps, mcpJsonConfig)
+
+		//#then
+		expect(result).toBe(false)
+	})
+
 	test("returns false when no linear-related keys exist", () => {
 		//#given
 		const registeredMcps = { "other-mcp": {} }
@@ -78,6 +135,43 @@ describe("detectLinearMcp", () => {
 		//#given
 		const registeredMcps = {}
 		const mcpJsonConfig = { mcpServers: {} }
+
+		//#when
+		const result = detectLinearMcp(registeredMcps, mcpJsonConfig)
+
+		//#then
+		expect(result).toBe(false)
+	})
+
+	test("returns true when name doesn't match but URL contains mcp.linear.app", () => {
+		//#given
+		const registeredMcps = {}
+		const mcpJsonConfig = {
+			mcpServers: {
+				"issue-tracker": {
+					url: "https://mcp.linear.app/mcp",
+				},
+			},
+		}
+
+		//#when
+		const result = detectLinearMcp(registeredMcps, mcpJsonConfig)
+
+		//#then
+		expect(result).toBe(true)
+	})
+
+	test("returns false when server config has no url field", () => {
+		//#given
+		const registeredMcps = {}
+		const mcpJsonConfig = {
+			mcpServers: {
+				"some-server": {
+					command: "npx",
+					args: ["some-mcp"],
+				},
+			},
+		}
 
 		//#when
 		const result = detectLinearMcp(registeredMcps, mcpJsonConfig)

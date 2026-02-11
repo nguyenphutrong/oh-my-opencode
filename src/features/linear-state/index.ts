@@ -1,7 +1,7 @@
 export type { LinearIssue, LinearLabel, LinearMcpClient, LinearStateType, TrackingStateProvider, PlanProgress, ResolvedProvider } from "./types"
 export type { LinearShadowCache } from "./shadow-cache-types"
 export { EMPTY_SHADOW_CACHE } from "./shadow-cache-types"
-export { detectLinearMcp } from "./detection"
+export { detectLinearMcp, matchesLinearName } from "./detection"
 export { resolveTrackingProvider } from "./resolve-provider"
 export { createLinearStateProvider } from "./linear-provider"
 export { createMarkdownStateProvider } from "./markdown-provider"
