@@ -8,10 +8,7 @@ import {
 } from "./completion-promise-detector"
 import { buildContinuationPrompt } from "./continuation-prompt-builder"
 import { injectContinuationPrompt } from "./continuation-prompt-injector"
-import {
-	transitionToNextIssue,
-	buildNextIssueContinuationPrompt,
-} from "./next-issue-transition"
+import { handleLinearIssueCompletion } from "./linear-completion-handler"
 
 export function createRalphLoopEventHandler(
 	ctx: PluginInput,
@@ -82,32 +79,9 @@ export function createRalphLoopEventHandler(
 							: "tracking_provider",
 				})
 
-				if (completionViaTracking && options.trackingProvider?.findNextOpenIssueId) {
-					const nextIssueId = options.trackingProvider.findNextOpenIssueId()
-					if (nextIssueId) {
-						log(`[${HOOK_NAME}] Found next Linear issue, continuing loop`, {
-							sessionID,
-							nextIssueId,
-						})
-						transitionToNextIssue(options.directory, nextIssueId)
-						const newState = options.loopState.incrementIteration()
-						if (newState) {
-							try {
-								await injectContinuationPrompt(ctx, {
-									sessionID,
-									prompt: buildNextIssueContinuationPrompt(nextIssueId, newState),
-									directory: options.directory,
-									apiTimeoutMs: options.apiTimeoutMs,
-								})
-							} catch (err) {
-								log(`[${HOOK_NAME}] Failed to inject next-issue continuation`, {
-									sessionID,
-									error: String(err),
-								})
-							}
-						}
-						return
-					}
+			if (completionViaTracking && options.trackingProvider?.findNextOpenIssueId) {
+					const handled = await handleLinearIssueCompletion({ ctx, sessionID, options })
+					if (handled) return
 				}
 
 				options.loopState.clear()

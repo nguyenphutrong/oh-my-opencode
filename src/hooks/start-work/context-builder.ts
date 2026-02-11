@@ -8,6 +8,7 @@ import {
 	getPlanName,
 } from "../../features/boulder-state"
 import { setActiveIssue } from "../../features/linear-state/shadow-cache"
+import { detectLinearConfigFromDisk } from "./linear-config-detector"
 import {
 	discoverMarkdownPlans,
 	discoverLinearIssues,
@@ -100,6 +101,9 @@ function handlePlanDiscovery(
 	const allCandidates = [...linearCandidates, ...markdownCandidates]
 
 	if (allCandidates.length === 0) {
+		if (detectLinearConfigFromDisk(directory)) {
+			return formatLinearFirstRunInstructions(sessionId, timestamp)
+		}
 		return `\n## No Plans Found\n\nNo Prometheus plan files at .sisyphus/plans/ and no open Linear issues in shadow cache.\nUse Prometheus to create a work plan: /plan "your task"\nOr search Linear for open issues: use Linear MCP \`search_issues\``
 	}
 
@@ -141,8 +145,12 @@ function formatAutoSelectedPlan(
 	name: string, path: string, completed: number, total: number,
 	sessionId: string, timestamp: string, provider: "markdown" | "linear",
 ): string {
-	const providerLine = provider === "linear" ? `\n**Provider**: linear\n\nUse Linear MCP to get full issue details via \`get_issue\`. Update issue status to "In Progress" via \`update_issue\`. Mark sub-issues as Done when completed.` : ""
+	const providerLine = provider === "linear" ? `\n**Provider**: linear\n\n**MANDATORY STEPS** (execute in order):\n1. Call Linear MCP \`get_workflow_states\` to fetch team workflow states\n2. Call Linear MCP \`update_issue\` to set this issue status to "In Progress" (use the started state ID from workflow states)\n3. Call Linear MCP \`get_issue\` to fetch full issue details and sub-issues\n4. Execute sub-issues one by one\n5. Mark each sub-issue as "Done" via \`update_issue\` when completed` : ""
 	return `\n## Auto-Selected Plan\n\n**Plan**: ${name}\n**Path**: ${path}\n**Progress**: ${completed}/${total} tasks\n**Session ID**: ${sessionId}\n**Started**: ${timestamp}${providerLine}\n\nboulder.json has been created. Read the plan and begin execution.`
+}
+
+function formatLinearFirstRunInstructions(sessionId: string, timestamp: string): string {
+	return `\n<system-reminder>\n## Linear Mode — First Run Setup\n\n**Session ID**: ${sessionId}\n**Started**: ${timestamp}\n**Provider**: linear\n\nNo local cache exists yet. You MUST bootstrap the Linear cache by executing these steps IN ORDER:\n\n1. **Fetch workflow states**: Call Linear MCP \`get_workflow_states\` to get team workflow state IDs (In Progress, Done, etc.)\n2. **Search for open issues**: Call Linear MCP \`search_issues\` to find all open issues for the configured team\n3. **Pick the first open issue**: Select the first unstarted/backlog issue from results\n4. **Set it to "In Progress"**: Call Linear MCP \`update_issue\` with the started state ID\n5. **Fetch full details**: Call Linear MCP \`get_issue\` on the selected issue to get sub-issues\n6. **Begin execution**: Execute sub-issues one by one, marking each as "Done" via \`update_issue\`\n\nThe shadow cache will be auto-populated from your MCP tool responses (via linear-mcp-interceptor hook).\nAfter the first search, subsequent /start-work calls will find cached issues automatically.\n</system-reminder>`
 }
 
 function formatMultipleCandidates(

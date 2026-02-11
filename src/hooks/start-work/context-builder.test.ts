@@ -209,4 +209,28 @@ describe("buildStartWorkContext", () => {
 		expect(context).toContain("resume-plan");
 		expect(updatedState?.session_ids).toContain("session-6");
 	});
+
+	test("returns Linear first-run instructions when no plans/issues but Linear config exists", () => {
+		//#given
+		mkdirSync(join(testDir, ".opencode"), { recursive: true });
+		writeFileSync(
+			join(testDir, ".opencode", "oh-my-opencode.json"),
+			JSON.stringify({ ralph_loop: { tracking_provider: "linear", linear: { team_id: "team-abc" } } }),
+			"utf-8",
+		);
+
+		//#when
+		const context = buildStartWorkContext({
+			directory: testDir,
+			sessionId: "session-linear",
+			timestamp: "2026-02-10T11:00:00.000Z",
+			explicitPlanName: null,
+		});
+
+		//#then
+		expect(context).toContain("Linear Mode");
+		expect(context).toContain("First Run Setup");
+		expect(context).toContain("search_issues");
+		expect(context).toContain("get_workflow_states");
+	});
 });
