@@ -16,6 +16,8 @@ export interface BoulderState {
   plan_name: string
   /** Agent type to use when resuming (e.g., 'atlas') */
   agent?: string
+  tracking_provider?: "markdown" | "linear"
+  linear_issue_id?: string
 }
 
 export interface PlanProgress {

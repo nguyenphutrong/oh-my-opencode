@@ -105,7 +105,10 @@ export function createAtlasEventHandler(input: {
         return
       }
 
-      const progress = getPlanProgress(boulderState.active_plan)
+      const planRef = boulderState.linear_issue_id ?? boulderState.active_plan
+      const progress = options?.trackingProvider
+        ? await options.trackingProvider.getProgress(planRef)
+        : getPlanProgress(boulderState.active_plan)
       if (progress.isComplete) {
         log(`[${HOOK_NAME}] Boulder complete`, { sessionID, plan: boulderState.plan_name })
         return

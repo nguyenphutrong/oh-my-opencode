@@ -1,4 +1,5 @@
 import type { RalphLoopConfig } from "../../config"
+import type { TrackingStateProvider } from "../../features/linear-state/types"
 
 export interface RalphLoopState {
   active: boolean
@@ -9,6 +10,7 @@ export interface RalphLoopState {
   prompt: string
   session_id?: string
   ultrawork?: boolean
+  plan_ref?: string
 }
 
 export interface RalphLoopOptions {
@@ -16,4 +18,5 @@ export interface RalphLoopOptions {
   getTranscriptPath?: (sessionId: string) => string
   apiTimeout?: number
   checkSessionExists?: (sessionId: string) => Promise<boolean>
+  trackingProvider?: TrackingStateProvider
 }

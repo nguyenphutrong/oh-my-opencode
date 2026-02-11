@@ -1,6 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { log } from "../../shared/logger"
 import type { RalphLoopOptions, RalphLoopState } from "./types"
+import type { TrackingStateProvider } from "../../features/linear-state/types"
 import { HOOK_NAME } from "./constants"
 import {
 	detectCompletionInSessionMessages,
@@ -15,7 +16,7 @@ type SessionRecovery = {
 	clear: (sessionID: string) => void
 }
 type LoopStateController = { getState: () => RalphLoopState | null; clear: () => boolean; incrementIteration: () => RalphLoopState | null }
-type RalphLoopEventHandlerOptions = { directory: string; apiTimeoutMs: number; getTranscriptPath: (sessionID: string) => string | undefined; checkSessionExists?: RalphLoopOptions["checkSessionExists"]; sessionRecovery: SessionRecovery; loopState: LoopStateController }
+type RalphLoopEventHandlerOptions = { directory: string; apiTimeoutMs: number; getTranscriptPath: (sessionID: string) => string | undefined; checkSessionExists?: RalphLoopOptions["checkSessionExists"]; sessionRecovery: SessionRecovery; loopState: LoopStateController; trackingProvider?: TrackingStateProvider }
 
 export function createRalphLoopEventHandler(
 	ctx: PluginInput,
@@ -70,15 +71,20 @@ export function createRalphLoopEventHandler(
 					apiTimeoutMs: options.apiTimeoutMs,
 					directory: options.directory,
 				})
+			const completionViaTracking = !completionViaTranscript && !completionViaApi && state.plan_ref && options.trackingProvider
+				? await options.trackingProvider.isComplete(state.plan_ref).catch(() => false)
+				: false
 
-			if (completionViaTranscript || completionViaApi) {
+			if (completionViaTranscript || completionViaApi || completionViaTracking) {
 				log(`[${HOOK_NAME}] Completion detected!`, {
 					sessionID,
 					iteration: state.iteration,
 					promise: state.completion_promise,
 					detectedVia: completionViaTranscript
 						? "transcript_file"
-						: "session_messages_api",
+						: completionViaApi
+							? "session_messages_api"
+							: "tracking_provider",
 				})
 				options.loopState.clear()
 
