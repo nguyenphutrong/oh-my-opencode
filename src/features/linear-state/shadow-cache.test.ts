@@ -173,6 +173,38 @@ describe("shadow-cache", () => {
 		expect(nextId).toBe("OMO-109");
 	});
 
+	test("findNextOpenIssueId skips cache-miss issues instead of treating them as open", () => {
+		//#given
+		const cachedOpen = createIssue("OMO-120", "unstarted");
+		upsertIssueInCache(testDir, cachedOpen);
+		const cache = readShadowCache(testDir)!;
+		cache.open_issue_ids = ["OMO-MISSING", "OMO-120"];
+		cache.active_issue_id = null;
+		writeShadowCache(testDir, cache);
+
+		//#when
+		const nextId = findNextOpenIssueId(testDir);
+
+		//#then
+		expect(nextId).toBe("OMO-120");
+	});
+
+	test("findNextOpenIssueId returns null when all issues are cache-misses", () => {
+		//#given
+		const cache = readShadowCache(testDir) ?? {
+			...EMPTY_SHADOW_CACHE,
+			last_updated: new Date().toISOString(),
+		};
+		cache.open_issue_ids = ["OMO-GHOST-1", "OMO-GHOST-2"];
+		writeShadowCache(testDir, cache);
+
+		//#when
+		const nextId = findNextOpenIssueId(testDir);
+
+		//#then
+		expect(nextId).toBeNull();
+	});
+
 	test("findNextOpenIssueId returns null when there are no valid next issues", () => {
 		//#given
 		const activeIssue = createIssue("OMO-110", "started");

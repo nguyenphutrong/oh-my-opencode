@@ -90,7 +90,8 @@ export function findNextOpenIssueId(
 	for (const id of cache.open_issue_ids) {
 		if (id === activeId) continue
 		const issue = cache.issues[id]
-		if (!issue || !isIssueCompleted(issue)) return id
+		if (!issue) continue
+		if (!isIssueCompleted(issue)) return id
 	}
 	return null
 }
