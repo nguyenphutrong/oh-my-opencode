@@ -10,6 +10,7 @@ import { hasConnectedProvidersCache } from "../shared"
 import {
   setSessionAgent,
 } from "../features/claude-code-session-state"
+import { resolveLinearPlanRef } from "./ralph-loop-plan-ref"
 
 import type { CreatedHooks } from "../create-hooks"
 
@@ -130,6 +131,7 @@ export function createChatMessageHandler(args: {
         hooks.ralphLoop.startLoop(input.sessionID, prompt, {
           maxIterations: maxIterMatch ? parseInt(maxIterMatch[1], 10) : undefined,
           completionPromise: promiseMatch?.[1],
+          planRef: resolveLinearPlanRef(ctx.directory),
         })
       } else if (isCancelRalphTemplate) {
         hooks.ralphLoop.cancelLoop(input.sessionID)
