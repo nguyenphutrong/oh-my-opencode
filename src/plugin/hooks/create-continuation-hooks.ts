@@ -1,5 +1,6 @@
 import type { HookName, OhMyOpenCodeConfig } from "../../config"
 import type { BackgroundManager } from "../../features/background-agent"
+import type { TrackingStateProvider } from "../../features/linear-state/types"
 import type { PluginContext } from "../types"
 
 import {
@@ -35,6 +36,7 @@ export function createContinuationHooks(args: {
   safeHookEnabled: boolean
   backgroundManager: BackgroundManager
   sessionRecovery: SessionRecovery
+  trackingProvider?: TrackingStateProvider
 }): ContinuationHooks {
   const {
     ctx,
@@ -43,6 +45,7 @@ export function createContinuationHooks(args: {
     safeHookEnabled,
     backgroundManager,
     sessionRecovery,
+    trackingProvider,
   } = args
 
   const safeHook = <T>(hookName: HookName, factory: () => T): T | null =>
@@ -108,6 +111,7 @@ export function createContinuationHooks(args: {
           isContinuationStopped: (sessionID: string) =>
             stopContinuationGuard?.isStopped(sessionID) ?? false,
           agentOverrides: pluginConfig.agents,
+          trackingProvider,
         }))
     : null
 

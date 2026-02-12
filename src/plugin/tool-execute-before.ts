@@ -3,6 +3,7 @@ import type { PluginContext } from "./types"
 import { getMainSessionID } from "../features/claude-code-session-state"
 import { clearBoulderState } from "../features/boulder-state"
 import { log } from "../shared"
+import { resolveLinearPlanRef } from "./ralph-loop-plan-ref"
 
 import type { CreatedHooks } from "../create-hooks"
 
@@ -29,6 +30,7 @@ export function createToolExecuteBeforeHandler(args: {
     await hooks.prometheusMdOnly?.["tool.execute.before"]?.(input, output)
     await hooks.sisyphusJuniorNotepad?.["tool.execute.before"]?.(input, output)
     await hooks.atlasHook?.["tool.execute.before"]?.(input, output)
+    await hooks.linearMcpInterceptor?.["tool.execute.before"]?.(input, output)
 
     if (input.tool === "task") {
       const argsObject = output.args
@@ -58,6 +60,7 @@ export function createToolExecuteBeforeHandler(args: {
         hooks.ralphLoop.startLoop(sessionID, prompt, {
           maxIterations: maxIterMatch ? parseInt(maxIterMatch[1], 10) : undefined,
           completionPromise: promiseMatch?.[1],
+          planRef: resolveLinearPlanRef(ctx.directory),
         })
       } else if (command === "cancel-ralph" && sessionID) {
         hooks.ralphLoop.cancelLoop(sessionID)
@@ -76,6 +79,7 @@ export function createToolExecuteBeforeHandler(args: {
           ultrawork: true,
           maxIterations: maxIterMatch ? parseInt(maxIterMatch[1], 10) : undefined,
           completionPromise: promiseMatch?.[1],
+          planRef: resolveLinearPlanRef(ctx.directory),
         })
       }
     }

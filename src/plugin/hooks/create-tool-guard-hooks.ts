@@ -10,6 +10,7 @@ import {
   createRulesInjectorHook,
   createTasksTodowriteDisablerHook,
   createWriteExistingFileGuardHook,
+  createLinearMcpInterceptorHook,
 } from "../../hooks"
 import {
   getOpenCodeVersion,
@@ -28,6 +29,7 @@ export type ToolGuardHooks = {
   rulesInjector: ReturnType<typeof createRulesInjectorHook> | null
   tasksTodowriteDisabler: ReturnType<typeof createTasksTodowriteDisablerHook> | null
   writeExistingFileGuard: ReturnType<typeof createWriteExistingFileGuardHook> | null
+  linearMcpInterceptor: ReturnType<typeof createLinearMcpInterceptorHook> | null
 }
 
 export function createToolGuardHooks(args: {
@@ -85,6 +87,10 @@ export function createToolGuardHooks(args: {
     ? safeHook("write-existing-file-guard", () => createWriteExistingFileGuardHook(ctx))
     : null
 
+  const linearMcpInterceptor = isHookEnabled("linear-mcp-interceptor")
+    ? safeHook("linear-mcp-interceptor", () => createLinearMcpInterceptorHook(ctx.directory))
+    : null
+
   return {
     commentChecker,
     toolOutputTruncator,
@@ -94,5 +100,6 @@ export function createToolGuardHooks(args: {
     rulesInjector,
     tasksTodowriteDisabler,
     writeExistingFileGuard,
+    linearMcpInterceptor,
   }
 }

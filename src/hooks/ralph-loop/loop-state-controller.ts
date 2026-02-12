@@ -24,6 +24,7 @@ export function createLoopStateController(options: {
 				maxIterations?: number
 				completionPromise?: string
 				ultrawork?: boolean
+				planRef?: string
 			},
 		): boolean {
 			const state: RalphLoopState = {
@@ -40,6 +41,7 @@ export function createLoopStateController(options: {
 				started_at: new Date().toISOString(),
 				prompt,
 				session_id: sessionID,
+				plan_ref: loopOptions?.planRef,
 			}
 
 			const success = writeState(directory, state, stateDir)
